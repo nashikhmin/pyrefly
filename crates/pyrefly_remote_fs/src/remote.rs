@@ -34,7 +34,7 @@ impl Vfs for RemoteFs {
         };
 
         match self.client.send_vfs_request(request)? {
-            VfsResponse::Success { data: VfsResponseData::String(content) } => Ok(content),
+            VfsResponse::Success { data: VfsResponseData::String { value: content } } => Ok(content),
             VfsResponse::Error { message } => bail!("Failed to read file: {}", message),
             _ => bail!("Unexpected response type for read_to_string"),
         }
@@ -46,7 +46,7 @@ impl Vfs for RemoteFs {
         };
 
         match self.client.send_vfs_request(request)? {
-            VfsResponse::Success { data: VfsResponseData::Bytes(content) } => Ok(content),
+            VfsResponse::Success { data: VfsResponseData::Bytes { value: content } } => Ok(content),
             VfsResponse::Error { message } => bail!("Failed to read file: {}", message),
             _ => bail!("Unexpected response type for read"),
         }

@@ -36,6 +36,26 @@ impl MockServerState {
             let mut files = state.files.lock().unwrap();
             files.insert("/test.txt".to_string(), b"test content".to_vec());
             files.insert("/binary.bin".to_string(), vec![0x00, 0x01, 0x02, 0xFF]);
+
+            // Add pyproject.toml test data
+            let pyproject_content = r#"[project]
+name = "pythonproject9"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "jupyterlab>=4.4.10",
+]
+
+[tool]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+"#;
+            files.insert("/pyproject.toml".to_string(), pyproject_content.as_bytes().to_vec());
         }
 
         {
@@ -56,7 +76,7 @@ pub async fn start_mock_server(port: u16) -> (MockServerState, tokio::task::Join
     state.add_valid_token("valid_token".to_string());
 
     let app = Router::new()
-        .route("/vfs", post(handle_vfs))
+        .route("/lsp/vfs", post(handle_vfs))
         .with_state(state.clone());
 
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port))
@@ -124,7 +144,7 @@ async fn handle_vfs(
             if let Some(content) = state.files.lock().unwrap().get(&path) {
                 match String::from_utf8(content.clone()) {
                     Ok(text) => VfsResponse::Success {
-                        data: VfsResponseData::String(text),
+                        data: VfsResponseData::String { value: text },
                     },
                     Err(_) => VfsResponse::Error {
                         message: "File is not valid UTF-8".to_string(),
@@ -139,7 +159,7 @@ async fn handle_vfs(
         VfsRequest::Read { path } => {
             if let Some(content) = state.files.lock().unwrap().get(&path) {
                 VfsResponse::Success {
-                    data: VfsResponseData::Bytes(content.clone()),
+                    data: VfsResponseData::Bytes { value: content.clone() },
                 }
             } else {
                 VfsResponse::Error {

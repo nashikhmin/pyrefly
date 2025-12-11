@@ -151,3 +151,43 @@ async fn test_vfs_provider() {
     assert!(content.is_ok(), "VFS operations should work through provider");
     assert_eq!(content.unwrap(), "test content");
 }
+
+#[tokio::test]
+async fn test_pyproject_toml_deserialization() {
+    let port = 9004;
+    let (_state, _handle) = start_mock_server(port).await;
+
+    let remote_fs = tokio::task::spawn_blocking(move || {
+        RemoteFs::new(port, "valid_token".to_string())
+    }).await.unwrap().unwrap();
+
+    // Test reading pyproject.toml with specific content that matches the original issue
+    let content = tokio::task::spawn_blocking({
+        let remote_fs = remote_fs.clone();
+        move || {
+            remote_fs.read_to_string(Path::new("/pyproject.toml"))
+        }
+    }).await.unwrap();
+
+    assert!(content.is_ok(), "Reading pyproject.toml should succeed");
+
+    let expected_content = r#"[project]
+name = "pythonproject9"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "jupyterlab>=4.4.10",
+]
+
+[tool]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+"#;
+
+    assert_eq!(content.unwrap(), expected_content);
+}

@@ -31,11 +31,11 @@ pub enum VfsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum VfsResponseData {
-    String(String),
-    Bytes(Vec<u8>),
-    DirEntries(Vec<String>),
+    String { value: String },
+    Bytes { value: Vec<u8> },
+    DirEntries { value: Vec<String> },
     Unit,
 }
 
@@ -96,14 +96,14 @@ mod tests {
     #[test]
     fn test_vfs_response_string_data() {
         let response = VfsResponse::Success {
-            data: VfsResponseData::String("test content".to_string()),
+            data: VfsResponseData::String { value: "test content".to_string() },
         };
 
         let serialized = serde_json::to_vec(&response).unwrap();
         let deserialized: VfsResponse = serde_json::from_slice(&serialized).unwrap();
 
         match deserialized {
-            VfsResponse::Success { data: VfsResponseData::String(content) } => {
+            VfsResponse::Success { data: VfsResponseData::String { value: content } } => {
                 assert_eq!(content, "test content");
             }
             _ => panic!("Expected Success response with String data"),
@@ -113,14 +113,14 @@ mod tests {
     #[test]
     fn test_vfs_response_bytes_data() {
         let response = VfsResponse::Success {
-            data: VfsResponseData::Bytes(vec![0xFF, 0x00, 0x42]),
+            data: VfsResponseData::Bytes { value: vec![0xFF, 0x00, 0x42] },
         };
 
         let serialized = serde_json::to_vec(&response).unwrap();
         let deserialized: VfsResponse = serde_json::from_slice(&serialized).unwrap();
 
         match deserialized {
-            VfsResponse::Success { data: VfsResponseData::Bytes(bytes) } => {
+            VfsResponse::Success { data: VfsResponseData::Bytes { value: bytes } } => {
                 assert_eq!(bytes, vec![0xFF, 0x00, 0x42]);
             }
             _ => panic!("Expected Success response with Bytes data"),
@@ -156,6 +156,32 @@ mod tests {
                 assert_eq!(message, "File not found");
             }
             _ => panic!("Expected Error response"),
+        }
+    }
+
+    #[test]
+    fn test_vfs_response_pyproject_toml_format() {
+        // Test the exact JSON format that was causing the original issue
+        let json_str = r#"
+        {
+          "type": "Success",
+          "data": {
+            "type": "String",
+            "value": "[project]\nname = \"pythonproject9\"\nversion = \"0.1.0\"\ndescription = \"Add your description here\"\nrequires-python = \">=3.13\"\ndependencies = [\n    \"jupyterlab>=4.4.10\",\n]\n\n[tool]\n\n[tool.pyrefly]\nproject-includes = [\n    \"**/*.py*\",\n    \"**/*.ipynb\",\n]\n"
+          }
+        }
+        "#;
+
+        let deserialized: VfsResponse = serde_json::from_str(json_str).unwrap();
+
+        match deserialized {
+            VfsResponse::Success { data: VfsResponseData::String { value } } => {
+                assert!(value.contains("name = \"pythonproject9\""));
+                assert!(value.contains("version = \"0.1.0\""));
+                assert!(value.contains("jupyterlab>=4.4.10"));
+                assert!(value.contains("[tool.pyrefly]"));
+            }
+            _ => panic!("Expected Success response with String data"),
         }
     }
 }
