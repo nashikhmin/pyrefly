@@ -27,6 +27,8 @@
 #![feature(closure_lifetime_binder)]
 #![feature(if_let_guard)]
 
+// Ensure pyrefly_remote_fs is linked (uses linkme for registration)
+extern crate pyrefly_remote_fs;
 pub mod alt;
 mod binding;
 #[cfg(not(target_arch = "wasm32"))]

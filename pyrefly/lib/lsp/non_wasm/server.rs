@@ -10,10 +10,10 @@ use std::collections::HashSet;
 use std::iter::once;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::time::Instant;
 
 use dupe::Dupe;
@@ -26,6 +26,49 @@ use lsp_server::Request;
 use lsp_server::RequestId;
 use lsp_server::Response;
 use lsp_server::ResponseError;
+use lsp_types::notification::Cancel;
+use lsp_types::notification::DidChangeConfiguration;
+use lsp_types::notification::DidChangeTextDocument;
+use lsp_types::notification::DidChangeWatchedFiles;
+use lsp_types::notification::DidChangeWorkspaceFolders;
+use lsp_types::notification::DidCloseTextDocument;
+use lsp_types::notification::DidOpenTextDocument;
+use lsp_types::notification::DidSaveTextDocument;
+use lsp_types::notification::Exit;
+use lsp_types::notification::Notification as _;
+use lsp_types::notification::PublishDiagnostics;
+use lsp_types::request::CallHierarchyIncomingCalls;
+use lsp_types::request::CallHierarchyOutgoingCalls;
+use lsp_types::request::CallHierarchyPrepare;
+use lsp_types::request::CodeActionRequest;
+use lsp_types::request::Completion;
+use lsp_types::request::DocumentDiagnosticRequest;
+use lsp_types::request::DocumentHighlightRequest;
+use lsp_types::request::DocumentSymbolRequest;
+use lsp_types::request::FoldingRangeRequest;
+use lsp_types::request::GotoDeclaration;
+use lsp_types::request::GotoDefinition;
+use lsp_types::request::GotoImplementation;
+use lsp_types::request::GotoImplementationParams;
+use lsp_types::request::GotoImplementationResponse;
+use lsp_types::request::GotoTypeDefinition;
+use lsp_types::request::GotoTypeDefinitionParams;
+use lsp_types::request::GotoTypeDefinitionResponse;
+use lsp_types::request::HoverRequest;
+use lsp_types::request::InlayHintRequest;
+use lsp_types::request::PrepareRenameRequest;
+use lsp_types::request::References;
+use lsp_types::request::RegisterCapability;
+use lsp_types::request::Rename;
+use lsp_types::request::Request as _;
+use lsp_types::request::SemanticTokensFullRequest;
+use lsp_types::request::SemanticTokensRangeRequest;
+use lsp_types::request::SemanticTokensRefresh;
+use lsp_types::request::SignatureHelpRequest;
+use lsp_types::request::UnregisterCapability;
+use lsp_types::request::WillRenameFiles;
+use lsp_types::request::WorkspaceConfiguration;
+use lsp_types::request::WorkspaceSymbolRequest;
 use lsp_types::CallHierarchyServerCapability;
 use lsp_types::CodeAction;
 use lsp_types::CodeActionKind;
@@ -124,55 +167,12 @@ use lsp_types::WorkspaceEdit;
 use lsp_types::WorkspaceFoldersServerCapabilities;
 use lsp_types::WorkspaceServerCapabilities;
 use lsp_types::WorkspaceSymbolResponse;
-use lsp_types::notification::Cancel;
-use lsp_types::notification::DidChangeConfiguration;
-use lsp_types::notification::DidChangeTextDocument;
-use lsp_types::notification::DidChangeWatchedFiles;
-use lsp_types::notification::DidChangeWorkspaceFolders;
-use lsp_types::notification::DidCloseTextDocument;
-use lsp_types::notification::DidOpenTextDocument;
-use lsp_types::notification::DidSaveTextDocument;
-use lsp_types::notification::Exit;
-use lsp_types::notification::Notification as _;
-use lsp_types::notification::PublishDiagnostics;
-use lsp_types::request::CallHierarchyIncomingCalls;
-use lsp_types::request::CallHierarchyOutgoingCalls;
-use lsp_types::request::CallHierarchyPrepare;
-use lsp_types::request::CodeActionRequest;
-use lsp_types::request::Completion;
-use lsp_types::request::DocumentDiagnosticRequest;
-use lsp_types::request::DocumentHighlightRequest;
-use lsp_types::request::DocumentSymbolRequest;
-use lsp_types::request::FoldingRangeRequest;
-use lsp_types::request::GotoDeclaration;
-use lsp_types::request::GotoDefinition;
-use lsp_types::request::GotoImplementation;
-use lsp_types::request::GotoImplementationParams;
-use lsp_types::request::GotoImplementationResponse;
-use lsp_types::request::GotoTypeDefinition;
-use lsp_types::request::GotoTypeDefinitionParams;
-use lsp_types::request::GotoTypeDefinitionResponse;
-use lsp_types::request::HoverRequest;
-use lsp_types::request::InlayHintRequest;
-use lsp_types::request::PrepareRenameRequest;
-use lsp_types::request::References;
-use lsp_types::request::RegisterCapability;
-use lsp_types::request::Rename;
-use lsp_types::request::Request as _;
-use lsp_types::request::SemanticTokensFullRequest;
-use lsp_types::request::SemanticTokensRangeRequest;
-use lsp_types::request::SemanticTokensRefresh;
-use lsp_types::request::SignatureHelpRequest;
-use lsp_types::request::UnregisterCapability;
-use lsp_types::request::WillRenameFiles;
-use lsp_types::request::WorkspaceConfiguration;
-use lsp_types::request::WorkspaceSymbolRequest;
 use pyrefly_build::handle::Handle;
 use pyrefly_config::config::ConfigSource;
-use pyrefly_python::PYTHON_EXTENSIONS;
 use pyrefly_python::module::TextRangeWithModule;
 use pyrefly_python::module_name::ModuleName;
 use pyrefly_python::module_path::ModulePath;
+use pyrefly_python::PYTHON_EXTENSIONS;
 use pyrefly_util::absolutize::Absolutize as _;
 use pyrefly_util::arc_id::ArcId;
 use pyrefly_util::events::CategorizedEvents;
@@ -187,15 +187,14 @@ use pyrefly_util::watch_pattern::WatchPattern;
 use ruff_text_size::Ranged;
 use ruff_text_size::TextRange;
 use ruff_text_size::TextSize;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::Value;
 use starlark_map::small_map::SmallMap;
 use starlark_map::small_set::SmallSet;
 use tracing::error;
 use tracing::info;
 
-use crate::ModuleInfo;
 use crate::commands::lsp::IndexingMode;
 use crate::config::config::ConfigFile;
 use crate::error::error::Error;
@@ -229,9 +228,9 @@ use crate::lsp::wasm::notebook::DidChangeNotebookDocumentParams;
 use crate::lsp::wasm::notebook::DidCloseNotebookDocument;
 use crate::lsp::wasm::notebook::DidOpenNotebookDocument;
 use crate::lsp::wasm::notebook::DidSaveNotebookDocument;
+use crate::lsp::wasm::provide_type::provide_type;
 use crate::lsp::wasm::provide_type::ProvideType;
 use crate::lsp::wasm::provide_type::ProvideTypeResponse;
-use crate::lsp::wasm::provide_type::provide_type;
 use crate::state::load::LspFile;
 use crate::state::lsp::DisplayTypeErrors;
 use crate::state::lsp::FindDefinitionItemWithDocstring;
@@ -239,12 +238,13 @@ use crate::state::lsp::FindPreference;
 use crate::state::lsp::ImportBehavior;
 use crate::state::notebook::LspNotebook;
 use crate::state::require::Require;
-use crate::state::semantic_tokens::SemanticTokensLegends;
 use crate::state::semantic_tokens::disabled_ranges_for_module;
+use crate::state::semantic_tokens::SemanticTokensLegends;
 use crate::state::state::CancellableTransaction;
 use crate::state::state::CommittingTransaction;
 use crate::state::state::State;
 use crate::state::state::Transaction;
+use crate::ModuleInfo;
 
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -1180,6 +1180,40 @@ impl Server {
                             x.id,
                             Ok(TypeErrorDisplayStatus::DisabledDueToMissingConfigFile),
                         ));
+                    }
+                } else if &x.method == "pyrefly/updateFs" {
+                    #[derive(serde::Deserialize)]
+                    struct UpdateFsParams {
+                        #[serde(rename = "fsName")]
+                        fs_name: String,
+                        args: std::collections::HashMap<String, String>,
+                    }
+
+                    match serde_json::from_value::<UpdateFsParams>(x.params) {
+                        Ok(params) => {
+                            match pyrefly_util::vfs::replaceFS(&params.fs_name, &params.args) {
+                                Ok(_) => {
+                                    self.send_response(new_response(
+                                        x.id,
+                                        Ok(serde_json::json!({"success": true})),
+                                    ));
+                                }
+                                Err(e) => {
+                                    self.send_response(Response::new_err(
+                                        x.id,
+                                        ErrorCode::InternalError as i32,
+                                        format!("Failed to update filesystem: {}", e),
+                                    ));
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            self.send_response(Response::new_err(
+                                x.id,
+                                ErrorCode::InvalidParams as i32,
+                                format!("Invalid parameters for pyrefly/updateFs: {}", e),
+                            ));
+                        }
                     }
                 } else {
                     self.send_response(Response::new_err(

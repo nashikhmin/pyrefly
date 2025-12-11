@@ -63,3 +63,5 @@ pub mod watch_pattern;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod watcher;
 pub mod with_hash;
+pub mod vfs;
+mod default_vfs;

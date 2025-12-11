@@ -38,6 +38,7 @@ pyrefly_bundled = { path = "../crates/pyrefly_bundled" }
 pyrefly_config = { path = "../crates/pyrefly_config" }
 pyrefly_derive = { path = "../crates/pyrefly_derive" }
 pyrefly_python = { path = "../crates/pyrefly_python" }
+pyrefly_remote_fs = { path = "../crates/pyrefly_remote_fs" }
 pyrefly_types = { path = "../crates/pyrefly_types" }
 pyrefly_util = { path = "../crates/pyrefly_util" }
 rayon = "1.11.0"
