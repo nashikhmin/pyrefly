@@ -12,6 +12,62 @@ use crate::test::lsp::lsp_interaction::object_model::LspInteraction;
 use crate::test::lsp::lsp_interaction::util::get_test_files_root;
 
 #[test]
+fn test_provide_type_unopened_file() {
+    let root = get_test_files_root();
+    let mut interaction = LspInteraction::new();
+    interaction.set_root(root.path().join("basic"));
+    interaction
+        .initialize(InitializeSettings {
+            configuration: Some(None),
+            ..Default::default()
+        })
+        .unwrap();
+
+    // NOTE: We do NOT call did_open on bar.py, testing that provide_type 
+    // can work with files that haven't been explicitly opened
+    interaction
+        .client
+        .provide_type("bar.py", 7, 5)
+        .expect_response(json!({
+            "contents": [{
+                "kind": "plaintext",
+                "value": "typing.Literal[3]",
+            }]
+        }))
+        .unwrap();
+
+    interaction.shutdown().unwrap();
+}
+
+#[test]
+fn test_provide_type_unopened_file_with_dependencies() {
+    let root = get_test_files_root();
+    let mut interaction = LspInteraction::new();
+    interaction.set_root(root.path().join("basic"));
+    interaction
+        .initialize(InitializeSettings {
+            configuration: Some(None),
+            ..Default::default()
+        })
+        .unwrap();
+
+    // NOTE: We do NOT call did_open on foo.py, testing that provide_type 
+    // can work with files that have dependencies (like importing from bar.py)
+    interaction
+        .client
+        .provide_type("foo.py", 6, 16)
+        .expect_response(json!({
+            "contents": [{
+                "kind": "plaintext",
+                "value": "type[bar.Bar]".to_owned()
+            }]
+        }))
+        .unwrap();
+
+    interaction.shutdown().unwrap();
+}
+
+#[test]
 fn test_provide_type_basic() {
     let root = get_test_files_root();
     let mut interaction = LspInteraction::new();

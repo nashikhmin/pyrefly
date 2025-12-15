@@ -8,17 +8,20 @@
 //! Experimental LSP method that shows the type of something using fully-qualified names
 //! See https://github.com/facebook/pyrefly/issues/1181
 
+use lsp_types::request::Request;
 use lsp_types::MarkupContent;
 use lsp_types::MarkupKind;
 use lsp_types::Position;
 use lsp_types::TextDocumentIdentifier;
-use lsp_types::request::Request;
 use pyrefly_build::handle::Handle;
 use pyrefly_types::display::TypeDisplayContext;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::state::require::Require;
 use crate::state::state::Transaction;
+use dupe::Dupe;
+use tracing::info;
 
 #[derive(Debug)]
 pub enum ProvideType {}
@@ -42,11 +45,25 @@ pub struct ProvideTypeResponse {
 }
 
 pub fn provide_type(
-    transaction: &Transaction<'_>,
+    transaction: &mut Transaction<'_>,
     handle: &Handle,
     positions: Vec<Position>,
 ) -> Option<ProvideTypeResponse> {
-    let info = transaction.get_module_info(handle)?;
+
+    // Check if module is already loaded
+    let was_loaded = transaction.get_module_info(handle).is_some();
+    info!("Module was already loaded: {}", was_loaded);
+
+    // Ensure the file is loaded/analyzed if not already
+    if !was_loaded {
+        info!("Running transaction for handle: {:?}", handle);
+        transaction.run(&[handle.dupe()], Require::Everything);
+    }
+
+    let info = transaction.get_module_info(handle);
+    info!("Module info after loading: {}", info.is_some());
+
+    let info = info?;
     let mut contents = Vec::new();
 
     for position in positions {
