@@ -222,6 +222,8 @@ use crate::lsp::non_wasm::will_rename_files::will_rename_files;
 use crate::lsp::non_wasm::workspace::LspAnalysisConfig;
 use crate::lsp::non_wasm::workspace::Workspace;
 use crate::lsp::non_wasm::workspace::Workspaces;
+use crate::lsp::wasm::cache_invalidated::CacheInvalidated;
+use crate::lsp::wasm::cache_invalidated::CacheInvalidatedParams;
 use crate::lsp::wasm::hover::get_hover;
 use crate::lsp::wasm::notebook::DidChangeNotebookDocument;
 use crate::lsp::wasm::notebook::DidChangeNotebookDocumentParams;
@@ -330,6 +332,13 @@ impl ServerConnection {
                 }
             }
         }
+    }
+
+    fn publish_cache_invalidated(&self, invalidated_files: Vec<String>) {
+        let params = CacheInvalidatedParams { invalidated_files };
+        self.send(Message::Notification(
+            new_notification::<CacheInvalidated>(params),
+        ));
     }
 }
 
@@ -1860,6 +1869,10 @@ impl Server {
                 "File {} changed, prepare to validate open files.",
                 file_path.display()
             );
+
+            // Notify client about cache invalidation
+            self.connection.publish_cache_invalidated(vec![uri.to_string()]);
+            
             self.validate_in_memory_and_commit_if_possible(ide_transaction_manager);
         }
         Ok(())
@@ -1994,6 +2007,10 @@ impl Server {
                 "Notebook {} changed, prepare to validate open files.",
                 file_path.display()
             );
+
+            // Notify client about cache invalidation
+            self.connection.publish_cache_invalidated(vec![uri.to_string()]);
+            
             self.validate_in_memory_and_commit_if_possible(ide_transaction_manager);
         }
         Ok(())

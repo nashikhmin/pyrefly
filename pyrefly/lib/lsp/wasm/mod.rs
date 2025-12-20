@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+pub mod cache_invalidated;
 pub mod hover;
 pub mod inlay_hints;
 pub mod notebook;

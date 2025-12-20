@@ -29,6 +29,7 @@ mod notebook_sync;
 mod notebook_tokens;
 mod object_model;
 mod provide_type;
+mod provide_type_pyi_test;
 mod references;
 mod rename;
 mod type_definition;
