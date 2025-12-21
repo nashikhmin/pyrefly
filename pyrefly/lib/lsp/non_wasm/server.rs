@@ -334,7 +334,7 @@ impl ServerConnection {
         }
     }
 
-    fn publish_cache_invalidated(&self, invalidated_files: Vec<String>) {
+    fn publish_cache_invalidated(&self, invalidated_files: Vec<TextDocumentIdentifier>) {
         let params = CacheInvalidatedParams { invalidated_files };
         self.send(Message::Notification(
             new_notification::<CacheInvalidated>(params),
@@ -1871,7 +1871,7 @@ impl Server {
             );
 
             // Notify client about cache invalidation
-            self.connection.publish_cache_invalidated(vec![uri.to_string()]);
+            self.connection.publish_cache_invalidated(vec![TextDocumentIdentifier { uri }]);
             
             self.validate_in_memory_and_commit_if_possible(ide_transaction_manager);
         }
@@ -2009,7 +2009,7 @@ impl Server {
             );
 
             // Notify client about cache invalidation
-            self.connection.publish_cache_invalidated(vec![uri.to_string()]);
+            self.connection.publish_cache_invalidated(vec![TextDocumentIdentifier { uri }]);
             
             self.validate_in_memory_and_commit_if_possible(ide_transaction_manager);
         }

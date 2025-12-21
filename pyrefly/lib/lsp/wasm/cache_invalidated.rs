@@ -8,6 +8,7 @@
 //! LSP notification for cache invalidation events
 
 use lsp_types::notification::Notification;
+use lsp_types::TextDocumentIdentifier;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -15,11 +16,11 @@ pub enum CacheInvalidated {}
 
 impl Notification for CacheInvalidated {
     type Params = CacheInvalidatedParams;
-    const METHOD: &'static str = "pyrefly/cacheInvalidated";
+    const METHOD: &'static str = "types/cache-invalidated";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheInvalidatedParams {
-    pub invalidated_files: Vec<String>,
+    pub invalidated_files: Vec<TextDocumentIdentifier>,
 }
